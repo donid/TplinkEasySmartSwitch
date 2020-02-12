@@ -28,3 +28,6 @@ It might also work with the following models:
 
 There is a more comprehensive project on GitHub which uses the native protocol of the switches, but it is written in Python:
 https://github.com/pklaus/smrt
+
+
+![.NET Core](https://github.com/donid/TplinkEasySmartSwitch/workflows/.NET%20Core/badge.svg)
