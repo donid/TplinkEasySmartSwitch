@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net;
 using TplinkEasySmartSwitch;
 
 
@@ -12,8 +13,19 @@ namespace tl_sg108e_net
 			string dnsNameOrIp = "tl-sg108e";
 			EasySmartSwitch easySmartSwitch = new EasySmartSwitch(dnsNameOrIp);
 			easySmartSwitch.Logon("admin", "admin");
+
 			//easySmartSwitch.ClearPortStatistics();
-			IReadOnlyList<PortStateInfo> ports= easySmartSwitch.GetPortStatistics();
+
+			IReadOnlyList<PortStateInfo> ports=null;
+			try
+			{
+				ports = easySmartSwitch.GetPortStatistics();
+			}
+			catch (WebException ex)
+			{
+				Console.WriteLine("Error: " + ex.Message);
+				return;
+			}
 
 			Console.WriteLine("Port#	Status	Link Status	TxGoodPkt	TxBadPkt	RxGoodPkt	RxBadPkt");
 			foreach (PortStateInfo psi in ports)
