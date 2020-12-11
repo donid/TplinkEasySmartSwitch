@@ -1,13 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Net;
-using System.Linq;
-using System.Text;
-using HtmlAgilityPack;
+﻿using HtmlAgilityPack;
 using Jint;
 using Jint.Native;
 using Jint.Native.Array;
+using System;
+using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Net;
 
 
 namespace TplinkEasySmartSwitch
@@ -53,20 +52,38 @@ namespace TplinkEasySmartSwitch
 		}
 
 		/// <summary>
-		/// Sets the Provided Ports Ingress and Egress Speeds to The values (the siwth does some rounding though) 0 means unlimited
+		/// Management Web-Interface: QoS / Bandwith Control
+		/// Sets the provided ports Ingress and Egress speeds to the values (the switch does some rounding though)
+		/// 0 means unlimited - 1000000 is the maximum value
 		/// </summary>
-		/// <param name="port">The port to which to aplly these settings</param>
+		/// <param name="port">The port to which to apply these settings</param>
 		/// <param name="igrRate">Ingressrate in Kbps</param>
 		/// <param name="egrRate">Egressrate in Kbps</param>
-		public void SetPortSpeeds(int port, int igrRate, int egrRate){
+		public void SetPortSpeeds(int port, int igrRate, int egrRate)
+		{
+			if (port < 1 || port > 24)
+			{
+				throw new ArgumentException($"{nameof(port)} must be between 1 and 24.", nameof(port));
+			}
+
+			if (igrRate < 0 || igrRate > 1000000)
+			{
+				throw new ArgumentException($"{nameof(igrRate)} must be between 0 and 1000000.", nameof(igrRate));
+			}
+
+			if (egrRate < 0 || egrRate > 1000000)
+			{
+				throw new ArgumentException($"{nameof(egrRate)} must be between 0 and 1000000.", nameof(egrRate));
+			}
+
 			string html = _client.DownloadString("QosBandWidthControlRpm.htm");
 			if (html.Contains("id=\"logon\""))
 			{
 				// not logged in!
 				throw new Exception("login failed");
 			}
+
 			var setBWData = new NameValueCollection();
-			
 			setBWData.Add("igrRate", igrRate.ToString());
 			setBWData.Add("egrRate", egrRate.ToString());
 			setBWData.Add("sel_" + port, "1");
@@ -76,7 +93,7 @@ namespace TplinkEasySmartSwitch
 			{
 				byte[] resp = _client.UploadValues("qos_bandwidth_set.cgi", "POST", setBWData);
 			}
-			catch (WebException ex)
+			catch (WebException /*ex*/)
 			{
 				//Console.WriteLine(ex);
 				// old TP-Link switches (eg.g. 1.0.2 Build 20160526 Rel.34615) reply with '401 Access Denied', but login works
@@ -86,6 +103,51 @@ namespace TplinkEasySmartSwitch
 
 		}
 
+		public IReadOnlyList<PortSpeedInfo> GetPortSpeeds()
+		{
+			string html = _client.DownloadString("QosBandWidthControlRpm.htm");
+			if (html.Contains("id=\"logon\""))
+			{
+				// not logged in!
+				throw new Exception("login failed");
+			}
+
+			HtmlDocument doc = new HtmlDocument();
+			doc.LoadHtml(html);
+			List<HtmlNode> scriptNodes = doc.DocumentNode.Descendants("script").ToList();
+			if (!scriptNodes.Any())
+			{
+				throw new Exception("no script nodes found");
+			}
+			HtmlNode script = scriptNodes.First();
+			string scriptText = script.InnerText;
+
+			Engine scriptingEngine = new Engine();
+			Engine result = scriptingEngine.Execute(scriptText);
+			JsValue r1 = result.GetValue("portNumber");
+			JsValue r2 = result.GetValue("bcInfo");
+			int max_port_num = (int)r1.AsNumber();
+			long[] speedRateArray = AsLongArray(r2);
+
+			List<PortSpeedInfo> ports = new List<PortSpeedInfo>();
+
+			for (int i = 0; i < max_port_num; i++)
+			{
+				var psi = new PortSpeedInfo()
+				{
+					PortNumber = (byte)(i + 1),
+					IngressRateKbps = speedRateArray[i * 3 + 0],
+					EgressRateKbps = speedRateArray[i * 3 + 1],
+				};
+				ports.Add(psi);
+			}
+			return ports;
+		}
+
+		/// <summary>
+		/// Management Web-Interface: Monitoring / Port Statistics
+		/// </summary>
+		/// <returns></returns>
 		public IReadOnlyList<PortStateInfo> GetPortStatistics()
 		{
 			string html = _client.DownloadString("PortStatisticsRpm.htm");

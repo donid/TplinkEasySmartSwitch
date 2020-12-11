@@ -3,6 +3,8 @@
 
 This library allows to retrieve (and reset) packet statistics from the Gigabit Switch TL-SG108E by some sort of Web-Scraping. This can be used for automatically monitoring if bad packets occur in your Ethernet network.
 
+**NEW:** QoS / Bandwith Control => GetPortSpeeds() SetPortSpeeds(IngressRate, EgressRate) (thanks to @EXTREMEGABEL)
+
 It might also work with the following models:
 
 - TL-SG105E

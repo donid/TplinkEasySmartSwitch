@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace TplinkEasySmartSwitch
+﻿namespace TplinkEasySmartSwitch
 {
 	public class PortStateInfo
 	{

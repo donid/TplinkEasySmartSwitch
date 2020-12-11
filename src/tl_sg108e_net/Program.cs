@@ -16,7 +16,7 @@ namespace tl_sg108e_net
 
 			//easySmartSwitch.ClearPortStatistics();
 
-			IReadOnlyList<PortStateInfo> ports=null;
+			IReadOnlyList<PortStateInfo> ports = null;
 			try
 			{
 				ports = easySmartSwitch.GetPortStatistics();
@@ -37,5 +37,5 @@ namespace tl_sg108e_net
 
 	}
 
-	
+
 }
