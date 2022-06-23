@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net;
+
 using TplinkEasySmartSwitch;
 
 
 namespace tl_sg108e_net
 {
-	class Program
+	internal class Program
 	{
-		static void Main(string[] args)
+		private static void Main(string[] args)
 		{
 			string dnsNameOrIp = "tl-sg108e";
 			EasySmartSwitch easySmartSwitch = new EasySmartSwitch(dnsNameOrIp);
