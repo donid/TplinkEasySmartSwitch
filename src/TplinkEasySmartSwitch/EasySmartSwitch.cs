@@ -1,7 +1,10 @@
 ﻿using HtmlAgilityPack;
+
 using Jint;
 using Jint.Native;
 using Jint.Native.Array;
+using Jint.Native.Object;
+
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
@@ -52,7 +55,7 @@ namespace TplinkEasySmartSwitch
 		}
 
 		/// <summary>
-		/// Management Web-Interface: QoS / Bandwith Control
+		/// Management Web-Interface: QoS / Bandwidth Control
 		/// Sets the provided ports Ingress and Egress speeds to the values (the switch does some rounding though)
 		/// 0 means unlimited - 1000000 is the maximum value
 		/// </summary>
@@ -77,11 +80,7 @@ namespace TplinkEasySmartSwitch
 			}
 
 			string html = _client.DownloadString("QosBandWidthControlRpm.htm");
-			if (html.Contains("id=\"logon\""))
-			{
-				// not logged in!
-				throw new Exception("login failed");
-			}
+			CheckLogin(html);
 
 			var setBWData = new NameValueCollection();
 			setBWData.Add("igrRate", igrRate.ToString());
@@ -106,19 +105,12 @@ namespace TplinkEasySmartSwitch
 		public IReadOnlyList<PortSpeedInfo> GetPortSpeeds()
 		{
 			string html = _client.DownloadString("QosBandWidthControlRpm.htm");
-			if (html.Contains("id=\"logon\""))
-			{
-				// not logged in!
-				throw new Exception("login failed");
-			}
+			CheckLogin(html);
 
 			HtmlDocument doc = new HtmlDocument();
 			doc.LoadHtml(html);
 			List<HtmlNode> scriptNodes = doc.DocumentNode.Descendants("script").ToList();
-			if (!scriptNodes.Any())
-			{
-				throw new Exception("no script nodes found");
-			}
+			CheckScriptNodes(scriptNodes);
 			HtmlNode script = scriptNodes.First();
 			string scriptText = script.InnerText;
 
@@ -151,30 +143,24 @@ namespace TplinkEasySmartSwitch
 		public IReadOnlyList<PortStateInfo> GetPortStatistics()
 		{
 			string html = _client.DownloadString("PortStatisticsRpm.htm");
-			if (html.Contains("id=\"logon\""))
-			{
-				// not logged in!
-				throw new Exception("login failed");
-			}
+			CheckLogin(html);
 
 			HtmlDocument doc = new HtmlDocument();
 			doc.LoadHtml(html);
 			List<HtmlNode> scriptNodes = doc.DocumentNode.Descendants("script").ToList();
-			if (!scriptNodes.Any())
-			{
-				throw new Exception("no script nodes found");
-			}
+			CheckScriptNodes(scriptNodes);
 			HtmlNode script = scriptNodes.First();
 			string scriptText = script.InnerText;
 
 			Engine scriptingEngine = new Engine();
 			Engine result = scriptingEngine.Execute(scriptText);
 			JsValue r1 = result.GetValue("max_port_num");
-			JsValue r2 = result.GetValue("all_info");
 			int max_port_num = (int)r1.AsNumber();
-			long[] linkStatusArray = AsLongArray(r2.AsObject().GetProperty("link_status").Value);
-			long[] stateArray = AsLongArray(r2.AsObject().GetProperty("state").Value);
-			long[] packetCountArray = AsLongArray(r2.AsObject().GetProperty("pkts").Value);
+			JsValue r2 = result.GetValue("all_info");
+			ObjectInstance allInfoObj = r2.AsObject();
+			long[] linkStatusArray = AsLongArray(allInfoObj.GetProperty("link_status").Value);
+			long[] stateArray = AsLongArray(allInfoObj.GetProperty("state").Value);
+			long[] packetCountArray = AsLongArray(allInfoObj.GetProperty("pkts").Value);
 
 			List<PortStateInfo> ports = new List<PortStateInfo>();
 
@@ -195,7 +181,22 @@ namespace TplinkEasySmartSwitch
 			return ports;
 		}
 
+		private static void CheckScriptNodes(List<HtmlNode> scriptNodes)
+		{
+			if (!scriptNodes.Any())
+			{
+				throw new InvalidOperationException("no script nodes found");
+			}
+		}
 
+		private static void CheckLogin(string html)
+		{
+			if (html.Contains("id=\"logon\""))
+			{
+				// not logged in!
+				throw new InvalidOperationException("login failed");
+			}
+		}
 
 		private static long[] AsLongArray(JsValue value)
 		{

@@ -22,7 +22,7 @@ namespace tl_sg108e_net
 			{
 				ports = easySmartSwitch.GetPortStatistics();
 			}
-			catch (WebException ex)
+			catch (InvalidOperationException ex)
 			{
 				Console.WriteLine("Error: " + ex.Message);
 				return;
